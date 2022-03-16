@@ -1,4 +1,4 @@
-package com.suxa.composition.domain
+package com.suxa.composition.presentation
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
