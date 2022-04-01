@@ -1,6 +1,7 @@
 package com.suxa.composition.presentation
 
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -75,7 +76,30 @@ class GameFragment : Fragment() {
                 countOfRightAnswers.toString(),
                 it.minCountOfRightQuestions.toString()
             )
+            launchTimer(it.gameTimeInMilliseconds)
         }
+    }
+
+    private fun launchTimer(timeInMilliseconds: Long) {
+        var countDown = timeInMilliseconds
+        object : CountDownTimer(countDown, 1000) {
+
+            override fun onTick(millisUntilFinished: Long) {
+                countDown = millisUntilFinished
+                val minutes: Int = (millisUntilFinished / 60000).toInt()
+                val seconds: Int = (millisUntilFinished % 60000 / 1000).toInt()
+                val secondsLeft = if (seconds < 10) {
+                    "0".plus(seconds.toString())
+                } else {
+                    seconds.toString()
+                }
+                binding.tvTimer.text = getString(R.string.timer, minutes.toString(), secondsLeft)
+            }
+
+            override fun onFinish() {
+//                launchGameFinishedFragment()
+            }
+        }.start()
     }
 
     fun launchGameFinishedFragment(gameResult: GameResult) {

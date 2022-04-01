@@ -35,4 +35,6 @@ class GameViewModel : ViewModel() {
             _question.value = generateQuestions.invoke(it.maxSumValue)
         }
     }
+
+
 }
