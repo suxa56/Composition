@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.suxa.composition.R
 import com.suxa.composition.databinding.FragmentGameBinding
 import com.suxa.composition.domain.entity.GameResult
@@ -17,6 +18,7 @@ class GameFragment : Fragment() {
 
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
+    private lateinit var viewModel: GameViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,20 +35,22 @@ class GameFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.tvOption1.setOnClickListener {
-            launchGameFinishedFragment(
-                GameResult(
-                    true,
-                    0,
-                    0,
-                    GameSettings(
-                        0,
-                        0,
-                        0,
-                        0
-                    )
-                )
-            )
+        viewModel = ViewModelProvider(this)[GameViewModel::class.java]
+
+        viewModel.initQuestion(level)
+
+        viewModel.question.observe(viewLifecycleOwner) {
+            with(binding) {
+            tvSum.setText(it.sum)
+            tvLeftNumber.setText(it.visibleNumber)
+            tvOption1.setText(it.options[0])
+            tvOption2.setText(it.options[1])
+            tvOption3.setText(it.options[2])
+            tvOption4.setText(it.options[3])
+            tvOption5.setText(it.options[4])
+            tvOption6.setText(it.options[5])
+            }
+
         }
     }
 
@@ -55,6 +59,7 @@ class GameFragment : Fragment() {
         _binding = null
     }
 
+    /** Util Funs **/
     private fun parseArgs() {
         requireArguments().getParcelable<Level>(KEY_LEVEL)?.let {
             level = it
