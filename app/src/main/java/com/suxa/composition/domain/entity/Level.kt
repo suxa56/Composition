@@ -1,6 +1,12 @@
 package com.suxa.composition.domain.entity
 
-enum class Level {
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
-    TEST, EASY, MEDIUM, HARD
+@Parcelize
+enum class Level : Parcelable {
+    TEST,
+    EASY,
+    NORMAL,
+    HARD
 }
