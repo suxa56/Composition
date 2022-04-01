@@ -4,12 +4,13 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.suxa.composition.data.GameRepositoryImpl
+import com.suxa.composition.domain.entity.GameSettings
 import com.suxa.composition.domain.entity.Level
 import com.suxa.composition.domain.entity.Question
 import com.suxa.composition.domain.usecases.GenerateQuestionsUseCase
 import com.suxa.composition.domain.usecases.GetGameSettingsUseCase
 
-class GameViewModel: ViewModel() {
+class GameViewModel : ViewModel() {
 
     private val repository = GameRepositoryImpl
 
@@ -22,7 +23,16 @@ class GameViewModel: ViewModel() {
             return _question
         }
 
-    fun initQuestion(level: Level) {
-        _question.value = generateQuestions.invoke(getGameSettings.invoke(level).maxSumValue)
+    private val _settings = MutableLiveData<GameSettings>()
+    val settings: LiveData<GameSettings>
+        get() {
+            return _settings
+        }
+
+    fun initQuestionsAndSettings(level: Level) {
+        _settings.value = getGameSettings.invoke(level)
+        _settings.value?.let {
+            _question.value = generateQuestions.invoke(it.maxSumValue)
+        }
     }
 }

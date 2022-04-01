@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.suxa.composition.R
 import com.suxa.composition.databinding.FragmentGameBinding
 import com.suxa.composition.domain.entity.GameResult
-import com.suxa.composition.domain.entity.GameSettings
 import com.suxa.composition.domain.entity.Level
 
 class GameFragment : Fragment() {
@@ -19,6 +18,8 @@ class GameFragment : Fragment() {
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
     private lateinit var viewModel: GameViewModel
+
+    var countOfRightAnswers = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,23 +36,7 @@ class GameFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this)[GameViewModel::class.java]
-
-        viewModel.initQuestion(level)
-
-        viewModel.question.observe(viewLifecycleOwner) {
-            with(binding) {
-            tvSum.setText(it.sum)
-            tvLeftNumber.setText(it.visibleNumber)
-            tvOption1.setText(it.options[0])
-            tvOption2.setText(it.options[1])
-            tvOption3.setText(it.options[2])
-            tvOption4.setText(it.options[3])
-            tvOption5.setText(it.options[4])
-            tvOption6.setText(it.options[5])
-            }
-
-        }
+        settingUpViewModel()
     }
 
     override fun onDestroyView() {
@@ -63,6 +48,33 @@ class GameFragment : Fragment() {
     private fun parseArgs() {
         requireArguments().getParcelable<Level>(KEY_LEVEL)?.let {
             level = it
+        }
+    }
+
+    private fun settingUpViewModel() {
+        viewModel = ViewModelProvider(this)[GameViewModel::class.java]
+
+        viewModel.initQuestionsAndSettings(level)
+
+        viewModel.question.observe(viewLifecycleOwner) {
+            with(binding) {
+                tvSum.text = it.sum.toString()
+                tvLeftNumber.text = it.visibleNumber.toString()
+                tvOption1.text = it.options[0].toString()
+                tvOption2.text = it.options[1].toString()
+                tvOption3.text = it.options[2].toString()
+                tvOption4.text = it.options[3].toString()
+                tvOption5.text = it.options[4].toString()
+                tvOption6.text = it.options[5].toString()
+            }
+        }
+
+        viewModel.settings.observe(viewLifecycleOwner) {
+            binding.tvAnswersProgress.text = getString(
+                R.string.progress_answers,
+                countOfRightAnswers.toString(),
+                it.minCountOfRightQuestions.toString()
+            )
         }
     }
 
