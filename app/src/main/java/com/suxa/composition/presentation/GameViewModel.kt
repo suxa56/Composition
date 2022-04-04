@@ -17,6 +17,7 @@ class GameViewModel : ViewModel() {
     private val generateQuestions = GenerateQuestionsUseCase(repository)
     private val getGameSettings = GetGameSettingsUseCase(repository)
 
+    /** Live Data **/
     private val _question = MutableLiveData<Question>()
     val question: LiveData<Question>
         get() {
@@ -29,12 +30,14 @@ class GameViewModel : ViewModel() {
             return _settings
         }
 
-    fun initQuestionsAndSettings(level: Level) {
+    /** Funs **/
+    fun initSettings(level: Level) {
         _settings.value = getGameSettings.invoke(level)
+    }
+
+    fun initQuestion() {
         _settings.value?.let {
             _question.value = generateQuestions.invoke(it.maxSumValue)
         }
     }
-
-
 }

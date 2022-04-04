@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.suxa.composition.R
 import com.suxa.composition.databinding.FragmentGameBinding
 import com.suxa.composition.domain.entity.GameResult
+import com.suxa.composition.domain.entity.GameSettings
 import com.suxa.composition.domain.entity.Level
 
 class GameFragment : Fragment() {
@@ -20,7 +21,14 @@ class GameFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var viewModel: GameViewModel
 
-    var countOfRightAnswers = 0
+    private var rightAnswersCount = 0
+    private var totalAnswersCount = 0
+    private var minAnswersCount = 0
+    private var totalQuestionsCount = 0
+    private var sum = 0
+    private var visibleNumber = 0
+    private var minPercent = 0
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +46,8 @@ class GameFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         settingUpViewModel()
+        configureProgressBar()
+        optionsClickListener()
     }
 
     override fun onDestroyView() {
@@ -55,7 +65,8 @@ class GameFragment : Fragment() {
     private fun settingUpViewModel() {
         viewModel = ViewModelProvider(this)[GameViewModel::class.java]
 
-        viewModel.initQuestionsAndSettings(level)
+        viewModel.initSettings(level)
+        viewModel.initQuestion()
 
         viewModel.question.observe(viewLifecycleOwner) {
             with(binding) {
@@ -68,14 +79,14 @@ class GameFragment : Fragment() {
                 tvOption5.text = it.options[4].toString()
                 tvOption6.text = it.options[5].toString()
             }
+            sum = it.sum
+            visibleNumber = it.visibleNumber
         }
 
         viewModel.settings.observe(viewLifecycleOwner) {
-            binding.tvAnswersProgress.text = getString(
-                R.string.progress_answers,
-                countOfRightAnswers.toString(),
-                it.minCountOfRightQuestions.toString()
-            )
+            minAnswersCount = it.minCountOfRightQuestions
+            minPercent = it.minPercentOfRightQuestions
+            totalQuestionsCount = 100 / it.minPercentOfRightQuestions * it.minCountOfRightQuestions
             launchTimer(it.gameTimeInMilliseconds)
         }
     }
@@ -97,12 +108,77 @@ class GameFragment : Fragment() {
             }
 
             override fun onFinish() {
-//                launchGameFinishedFragment()
+                launchGameFinishedFragment(calculateGameResult())
             }
         }.start()
     }
 
-    fun launchGameFinishedFragment(gameResult: GameResult) {
+    private fun optionsClickListener() {
+        binding.tvOption1.setOnClickListener {
+            checkAnswer(binding.tvOption1.text.toString().toInt())
+        }
+        binding.tvOption2.setOnClickListener {
+            checkAnswer(binding.tvOption2.text.toString().toInt())
+        }
+        binding.tvOption3.setOnClickListener {
+            checkAnswer(binding.tvOption3.text.toString().toInt())
+        }
+        binding.tvOption4.setOnClickListener {
+            checkAnswer(binding.tvOption4.text.toString().toInt())
+        }
+        binding.tvOption5.setOnClickListener {
+            checkAnswer(binding.tvOption5.text.toString().toInt())
+        }
+        binding.tvOption6.setOnClickListener {
+            checkAnswer(binding.tvOption6.text.toString().toInt())
+        }
+    }
+
+    private fun checkAnswer(optionText: Int) {
+        if ((sum - visibleNumber) == optionText) {
+            rightAnswer()
+        } else {
+            wrongAnswer()
+        }
+
+        configureProgressBar()
+        viewModel.initQuestion()
+    }
+
+    private fun rightAnswer() {
+        rightAnswersCount += 1
+        totalAnswersCount += 1
+    }
+
+    private fun wrongAnswer() {
+        totalAnswersCount += 1
+    }
+
+    private fun configureProgressBar() {
+        val progressBar = binding.progressBar
+        if (totalAnswersCount > totalQuestionsCount) {
+            totalQuestionsCount += 1
+        }
+        progressBar.max = totalQuestionsCount
+        progressBar.progress = rightAnswersCount
+        binding.tvAnswersProgress.text = getString(
+            R.string.progress_answers,
+            rightAnswersCount.toString(),
+            minAnswersCount.toString()
+        )
+    }
+
+    private fun calculateGameResult():GameResult {
+        val gameSettings: GameSettings = viewModel.settings.value!!
+        return GameResult(isWinner(), rightAnswersCount, totalQuestionsCount, gameSettings)
+    }
+
+    private fun isWinner(): Boolean {
+        return rightAnswersCount >= minAnswersCount &&
+                (rightAnswersCount/totalQuestionsCount)*100 >= minPercent
+    }
+
+    private fun launchGameFinishedFragment(gameResult: GameResult) {
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(R.id.main_container, GameFinishedFragment.newInstance(gameResult))
             .addToBackStack(null)
