@@ -5,8 +5,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import com.suxa.composition.R
 import com.suxa.composition.databinding.FragmentGameFinishedBinding
 import com.suxa.composition.domain.entity.GameResult
 
@@ -32,13 +34,8 @@ class GameFinishedFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    retryGame()
-                }
-            })
+        putResult()
+        backPressedCallback()
         binding.buttonRetry.setOnClickListener {
             retryGame()
         }
@@ -53,6 +50,52 @@ class GameFinishedFragment : Fragment() {
         requireArguments().getParcelable<GameResult>(KEY_GAME_RESULT)?.let {
             gameResult = it
         }
+    }
+
+    private fun putResult() {
+        if (gameResult.winner) {
+            binding.emojiResult.setImageDrawable(
+                ContextCompat.getDrawable(
+                    requireContext(),
+                    R.drawable.ic_smile
+                )
+            )
+        } else {
+            binding.emojiResult.setImageDrawable(
+                ContextCompat.getDrawable(
+                    requireContext(),
+                    R.drawable.ic_sad
+                )
+            )
+        }
+        binding.tvRequiredAnswers.text = getString(
+            R.string.required_score,
+            gameResult.gameSettings.minCountOfRightQuestions.toString()
+        )
+        binding.tvScoreAnswers.text = getString(
+            R.string.score_answers,
+            gameResult.countOfRightAnswers.toString()
+        )
+        binding.tvRequiredPercentage.text = getString(
+            R.string.required_percentage,
+            gameResult.gameSettings.minPercentOfRightQuestions.toString()
+        )
+        binding.tvScorePercentage.text = getString(
+            R.string.score_percentage, (
+                    gameResult.countOfRightAnswers.toDouble()
+                            / gameResult.countOfQuestions.toDouble() * 100)
+                .toInt().toString()
+        )
+    }
+
+    private fun backPressedCallback() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    retryGame()
+                }
+            })
     }
 
     private fun retryGame() {

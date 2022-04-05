@@ -1,34 +1,44 @@
 package com.suxa.composition.presentation
 
+import android.content.res.ColorStateList
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.suxa.composition.R
 import com.suxa.composition.databinding.FragmentGameBinding
 import com.suxa.composition.domain.entity.GameResult
-import com.suxa.composition.domain.entity.GameSettings
 import com.suxa.composition.domain.entity.Level
 
 class GameFragment : Fragment() {
 
     private lateinit var level: Level
 
+    private val viewModelFactory by lazy {
+        GameViewModelFactory(level, requireActivity().application)
+    }
+
+    private val viewModel by lazy {
+        ViewModelProvider(this, viewModelFactory)[GameViewModel::class.java]
+    }
+
+    private val tvOptions by lazy {
+        mutableListOf<TextView>().apply {
+            add(binding.tvOption1)
+            add(binding.tvOption2)
+            add(binding.tvOption3)
+            add(binding.tvOption4)
+            add(binding.tvOption5)
+            add(binding.tvOption6)
+        }
+    }
+
     private var _binding: FragmentGameBinding? = null
     private val binding get() = _binding!!
-    private lateinit var viewModel: GameViewModel
-
-    private var rightAnswersCount = 0
-    private var totalAnswersCount = 0
-    private var minAnswersCount = 0
-    private var totalQuestionsCount = 0
-    private var sum = 0
-    private var visibleNumber = 0
-    private var minPercent = 0
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,9 +55,48 @@ class GameFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        settingUpViewModel()
-        configureProgressBar()
-        optionsClickListener()
+        observeViewModel()
+        setClickListenersToOptions()
+    }
+
+    private fun setClickListenersToOptions() {
+        for (tvOption in tvOptions) {
+            tvOption.setOnClickListener {
+                viewModel.chooseAnswer(tvOption.text.toString().toInt())
+            }
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.question.observe(viewLifecycleOwner) {
+            binding.tvSum.text = it.sum.toString()
+            binding.tvLeftNumber.text = it.visibleNumber.toString()
+            for (i in 0 until tvOptions.size) {
+                tvOptions[i].text = it.options[i].toString()
+            }
+        }
+        viewModel.percentOfRightAnswers.observe(viewLifecycleOwner) {
+            binding.progressBar.setProgress(it, true)
+        }
+        viewModel.enoughCount.observe(viewLifecycleOwner) {
+            binding.tvAnswersProgress.setTextColor(getColorByState(it))
+        }
+        viewModel.enoughPercent.observe(viewLifecycleOwner) {
+            val color = getColorByState(it)
+            binding.progressBar.progressTintList = ColorStateList.valueOf(color)
+        }
+        viewModel.formattedTime.observe(viewLifecycleOwner) {
+            binding.tvTimer.text = it
+        }
+        viewModel.minPercent.observe(viewLifecycleOwner) {
+            binding.progressBar.secondaryProgress = it
+        }
+        viewModel.gameResult.observe(viewLifecycleOwner) {
+            launchGameFinishedFragment(it)
+        }
+        viewModel.progressAnswers.observe(viewLifecycleOwner) {
+            binding.tvAnswersProgress.text = it
+        }
     }
 
     override fun onDestroyView() {
@@ -55,127 +104,19 @@ class GameFragment : Fragment() {
         _binding = null
     }
 
-    /** Util Funs **/
+    private fun getColorByState(goodState: Boolean): Int {
+        val colorResId = if (goodState) {
+            android.R.color.holo_green_light
+        } else {
+            android.R.color.holo_red_light
+        }
+        return ContextCompat.getColor(requireContext(), colorResId)
+    }
+
     private fun parseArgs() {
         requireArguments().getParcelable<Level>(KEY_LEVEL)?.let {
             level = it
         }
-    }
-
-    private fun settingUpViewModel() {
-        viewModel = ViewModelProvider(this)[GameViewModel::class.java]
-
-        viewModel.initSettings(level)
-        viewModel.initQuestion()
-
-        viewModel.question.observe(viewLifecycleOwner) {
-            with(binding) {
-                tvSum.text = it.sum.toString()
-                tvLeftNumber.text = it.visibleNumber.toString()
-                tvOption1.text = it.options[0].toString()
-                tvOption2.text = it.options[1].toString()
-                tvOption3.text = it.options[2].toString()
-                tvOption4.text = it.options[3].toString()
-                tvOption5.text = it.options[4].toString()
-                tvOption6.text = it.options[5].toString()
-            }
-            sum = it.sum
-            visibleNumber = it.visibleNumber
-        }
-
-        viewModel.settings.observe(viewLifecycleOwner) {
-            minAnswersCount = it.minCountOfRightQuestions
-            minPercent = it.minPercentOfRightQuestions
-            totalQuestionsCount = 100 / it.minPercentOfRightQuestions * it.minCountOfRightQuestions
-            launchTimer(it.gameTimeInMilliseconds)
-        }
-    }
-
-    private fun launchTimer(timeInMilliseconds: Long) {
-        var countDown = timeInMilliseconds
-        object : CountDownTimer(countDown, 1000) {
-
-            override fun onTick(millisUntilFinished: Long) {
-                countDown = millisUntilFinished
-                val minutes: Int = (millisUntilFinished / 60000).toInt()
-                val seconds: Int = (millisUntilFinished % 60000 / 1000).toInt()
-                val secondsLeft = if (seconds < 10) {
-                    "0".plus(seconds.toString())
-                } else {
-                    seconds.toString()
-                }
-                binding.tvTimer.text = getString(R.string.timer, minutes.toString(), secondsLeft)
-            }
-
-            override fun onFinish() {
-                launchGameFinishedFragment(calculateGameResult())
-            }
-        }.start()
-    }
-
-    private fun optionsClickListener() {
-        binding.tvOption1.setOnClickListener {
-            checkAnswer(binding.tvOption1.text.toString().toInt())
-        }
-        binding.tvOption2.setOnClickListener {
-            checkAnswer(binding.tvOption2.text.toString().toInt())
-        }
-        binding.tvOption3.setOnClickListener {
-            checkAnswer(binding.tvOption3.text.toString().toInt())
-        }
-        binding.tvOption4.setOnClickListener {
-            checkAnswer(binding.tvOption4.text.toString().toInt())
-        }
-        binding.tvOption5.setOnClickListener {
-            checkAnswer(binding.tvOption5.text.toString().toInt())
-        }
-        binding.tvOption6.setOnClickListener {
-            checkAnswer(binding.tvOption6.text.toString().toInt())
-        }
-    }
-
-    private fun checkAnswer(optionText: Int) {
-        if ((sum - visibleNumber) == optionText) {
-            rightAnswer()
-        } else {
-            wrongAnswer()
-        }
-
-        configureProgressBar()
-        viewModel.initQuestion()
-    }
-
-    private fun rightAnswer() {
-        rightAnswersCount += 1
-        totalAnswersCount += 1
-    }
-
-    private fun wrongAnswer() {
-        totalAnswersCount += 1
-    }
-
-    private fun configureProgressBar() {
-        val progressBar = binding.progressBar
-        if (totalAnswersCount > totalQuestionsCount) {
-            totalQuestionsCount += 1
-        }
-        progressBar.max = totalQuestionsCount
-        progressBar.progress = rightAnswersCount
-        binding.tvAnswersProgress.text = getString(
-            R.string.progress_answers,
-            rightAnswersCount.toString(),
-            minAnswersCount.toString()
-        )
-    }
-
-    private fun calculateGameResult():GameResult {
-        val gameSettings: GameSettings = viewModel.settings.value!!
-        return GameResult(isWinner(), rightAnswersCount, totalQuestionsCount, gameSettings)
-    }
-
-    private fun isWinner(): Boolean {
-        return rightAnswersCount >= minAnswersCount &&
-                (rightAnswersCount/totalQuestionsCount)*100 >= minPercent
     }
 
     private fun launchGameFinishedFragment(gameResult: GameResult) {
@@ -195,7 +136,6 @@ class GameFragment : Fragment() {
                 arguments = Bundle().apply {
                     putParcelable(KEY_LEVEL, level)
                 }
-
             }
         }
     }
